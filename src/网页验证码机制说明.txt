@@ -1,0 +1,619 @@
+
+
+================================================================================
+                  验证码机制详细说明文档
+================================================================================
+
+一、概述
+================================================================================
+本验证码机制是一种基于日期的动态密码验证系统，用于保护正版授权内容。
+用户需要输入当日有效的4位验证码才能访问应用核心功能。
+
+核心特点：
+- 验证码每日自动更新，基于日期算法生成
+- 一次验证后，同一设备无需重复验证（通过localStorage持久化）
+- 验证失败后提供客服联系方式
+- 支持回车键快速提交验证
+
+
+二、验证码生成算法
+================================================================================
+
+算法公式：(月份³ + 日期³) + 2000，转16进制取后4位
+
+示例计算：
+- 4月4日：4³ + 4³ + 2000 = 64 + 64 + 2000 = 2128 → 0x850 → 0850 → 0850
+- 3月15日：3³ + 15³ + 2000 = 27 + 3375 + 2000 = 5402 → 0x151A → 151A
+- 12月25日：12³ + 25³ + 2000 = 1728 + 15625 + 2000 = 19353 → 0x4B99 → 4B99
+
+JavaScript实现代码：
+```javascript
+function generateTodayPassword() {
+    const now = new Date();
+    const month = now.getMonth() + 1;  // 1-12
+    const day = now.getDate();          // 1-31
+
+    // (月份³ + 日期³) + 2000
+    const num = Math.pow(month, 3) + Math.pow(day, 3) + 2000;
+
+    // 转为16进制（0-9, A-F）
+    const hex = num.toString(16).toUpperCase();
+
+    // 取后4位
+    const password = hex.slice(-4);
+
+    return password;
+}
+```
+
+
+三、界面布局详解
+================================================================================
+
+整体结构：
+┌────────────────────────────────────────────────────────────────┐
+│                                                                │
+│                   【全屏遮罩层】auth-overlay                   │
+│                                                                │
+│    ┌──────────────────────────────────────────┐                │
+│    │                                          │                │
+│    │         【验证容器】auth-container       │                │
+│    │                                          │                │
+│    │    ┌────────────────────────────┐        │                │
+│    │    │   LOGO图标 (80x80)        │        │                │
+│    │    └────────────────────────────┘        │                │
+│    │                                          │                │
+│    │    标题：金匮要略学习系统                   │                │
+│    │    副标题：正版授权验证                   │                │
+│    │                                          │                │
+│    │    ┌────────────────────────────┐        │                │
+│    │    │  请输入4位验证码            │        │                │
+│    │    └────────────────────────────┘        │                │
+│    │                                          │                │
+│    │    ┌────────────────────────────┐        │                │
+│    │    │  验证码输入框 (maxlength=4)│        │                │
+│    │    └────────────────────────────┘        │                │
+│    │                                          │                │
+│    │    提示：密码不区分大小写                  │                │
+│    │    同一设备只需验证一次                    │                │
+│    │                                          │                │
+│    │    ┌────────────────────────────┐        │                │
+│    │    │      验证并进入 (按钮)       │        │                │
+│    │    └────────────────────────────┘        │                │
+│    │                                          │                │
+│    │    ┌────────────────────────────┐        │                │
+│    │    │  错误提示信息 (隐藏/显示)    │        │                │
+│    │    └────────────────────────────┘        │                │
+│    │                                          │                │
+│    └──────────────────────────────────────────┘                │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+
+
+1. 遮罩层 (auth-overlay)
+   - 定位：fixed，铺满整个视口
+   - 背景：深蓝色渐变 (linear-gradient 135deg)
+   - 层级：z-index: 10000
+   - 毛玻璃效果：backdrop-filter: blur(10px)
+   - 显示/隐藏：通过添加/移除 'hidden' 类控制
+
+2. 验证容器 (auth-container)
+   - 最大宽度：420px
+   - 圆角：20px
+   - 内边距：40px
+   - 背景：rgba(255, 255, 255, 0.95) 半透明白色
+   - 顶部装饰条：5px渐变色条（绿→蓝→紫→橙）
+
+3. LOGO区域 (auth-logo)
+   - 尺寸：80x80px
+   - 背景：绿→深绿渐变
+   - 圆角：50%（圆形）
+   - 图标：SVG 40x40px，白色
+
+4. 标题区域
+   - 主标题 (auth-title)：24px，加粗，深灰色
+   - 副标题 (auth-subtitle)：14px，浅灰色
+
+5. 验证码输入框 (auth-input)
+   - 宽度：100%
+   - 内边距：16px 20px
+   - 字体大小：18px
+   - 字间距：8px（字母间距）
+   - 边框：2px solid #E0E0E0
+   - 圆角：12px
+   - 背景：#F5F5F5
+   - 最大输入长度：4
+   - 文字转换：输入自动转大写 (toUpperCase)
+
+6. 提示信息 (auth-hint)
+   - 字体大小：12px
+   - 颜色：#9E9E9E
+   - 包含图标和说明文字
+
+7. 提交按钮 (auth-btn)
+   - 宽度：100%
+   - 内边距：16px
+   - 背景：绿→深绿渐变
+   - 圆角：12px
+   - 字体：16px，加粗，白色
+   - 悬停效果：向上位移2px，阴影增强
+   - 禁用状态：灰色背景
+
+8. 错误提示 (auth-error-msg)
+   - 默认隐藏 (display: none)
+   - 红色文字 (#f44336)
+   - 显示时带动画效果
+   - 包含错误图标
+
+9. 客服联系弹窗 (contact-modal)
+   - 层级：z-index: 10001
+   - 背景：rgba(0, 0, 0, 0.6) + 模糊
+   - 包含客服微信、微信公众号信息
+
+10. 验证成功动画 (auth-success)
+    - 居中显示
+    - 弹跳动画效果
+    - 1.2秒后自动关闭
+
+
+四、CSS样式关键代码
+================================================================================
+
+/* 遮罩层 */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+.auth-overlay.hidden {
+    display: none !important;
+}
+
+/* 验证容器 */
+.auth-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 顶部渐变装饰条 */
+.auth-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #4CAF50, #2196F3, #9C27B0, #FF9800);
+}
+
+/* 输入框 */
+.auth-input {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 18px;
+    letter-spacing: 8px;
+    text-align: center;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-gray);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+}
+
+.auth-input.error {
+    border-color: #f44336;
+    background: #ffebee;
+    animation: shake 0.5s ease;
+}
+
+/* 错误动画 */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+
+/* 提交按钮 */
+.auth-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+/* 成功弹窗 */
+.auth-success {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    z-index: 10002;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.auth-success.show {
+    display: block;
+    animation: successPop 0.4s ease;
+}
+
+@keyframes successPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+
+五、JavaScript核心逻辑
+================================================================================
+
+1. 初始化流程 (window.onload)
+   - 调用 checkAuth() 检查验证状态
+
+2. checkAuth() 函数
+   - 检查 localStorage 中的 'tcm_auth_passed' 标记
+   - 如已验证：隐藏遮罩层，调用 init() 初始化应用
+   - 如未验证：显示遮罩层，聚焦输入框，绑定回车事件
+
+3. verifyPassword() 函数
+   - 获取用户输入并转大写
+   - 调用 generateTodayPassword() 获取当日正确密码
+   - 验证成功：
+     * 标记设备已验证 (markDeviceVerified)
+     * 显示成功动画
+     * 禁用按钮
+     * 1.2秒后隐藏遮罩层，初始化应用
+   - 验证失败：
+     * 显示错误样式和提示
+     * 清空输入框
+     * 500ms后显示客服联系弹窗
+
+4. markDeviceVerified() 函数
+   - 写入 localStorage.setItem('tcm_auth_passed', 'true')
+   - 同时保留旧版设备指纹记录（兼容）
+
+5. 设备指纹生成 (generateDeviceFingerprint)
+   - 组合：userAgent + screen分辨率 + colorDepth + timezone + language + platform
+   - 简单哈希算法生成唯一ID
+
+
+六、在其他网页中引用此验证码机制
+================================================================================
+
+方法1：直接复制完整代码
+--------------------------------------------------------------------------------
+将以下代码复制到你的HTML文件中：
+
+1. HTML结构（放在 <body> 开头）：
+```html
+<!-- 防伪验证遮罩层 -->
+<div class="auth-overlay" id="authOverlay">
+    <div class="auth-container">
+        <div class="auth-logo">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <h2 class="auth-title">应用标题</h2>
+        <p class="auth-subtitle">正版授权验证</p>
+
+        <div class="auth-date-display">
+            <strong>请输入验证码</strong>
+        </div>
+
+        <div class="auth-input-group">
+            <input type="text" class="auth-input" id="authPassword" placeholder="请输入4位验证码" maxlength="4" autocomplete="off">
+            <div class="auth-hint">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                <span>密码不区分大小写，同一设备只需验证一次</span>
+            </div>
+        </div>
+
+        <button class="auth-btn" id="authSubmitBtn" onclick="verifyPassword()">验证并进入</button>
+
+        <div class="auth-error-msg" id="authErrorMsg">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>验证码错误，请重试</span>
+        </div>
+    </div>
+</div>
+```
+
+2. CSS样式（放在 <style> 标签中）：
+```css
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+.auth-overlay.hidden { display: none !important; }
+.auth-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+.auth-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+}
+.auth-logo svg { width: 40px; height: 40px; fill: white; }
+.auth-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.auth-subtitle { font-size: 14px; color: #757575; margin-bottom: 28px; }
+.auth-input {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 18px;
+    letter-spacing: 8px;
+    text-align: center;
+    border: 2px solid #E0E0E0;
+    border-radius: 12px;
+    background: #F5F5F5;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.auth-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    background: #fff;
+}
+.auth-input.error {
+    border-color: #f44336;
+    background: #ffebee;
+    animation: shake 0.5s ease;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+.auth-hint {
+    font-size: 12px;
+    color: #9E9E9E;
+    margin-top: 8px;
+}
+.auth-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+}
+.auth-error-msg {
+    color: #f44336;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+}
+.auth-error-msg.show { display: block; }
+```
+
+3. JavaScript函数（放在 <script> 标签中）：
+```javascript
+// 生成今日密码
+function generateTodayPassword() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const num = Math.pow(month, 3) + Math.pow(day, 3) + 2000;
+    return num.toString(16).toUpperCase().slice(-4);
+}
+
+// 检查是否已验证
+function isDeviceVerified() {
+    return localStorage.getItem('tcm_auth_passed') === 'true';
+}
+
+// 标记设备已验证
+function markDeviceVerified() {
+    localStorage.setItem('tcm_auth_passed', 'true');
+}
+
+// 验证密码
+function verifyPassword() {
+    const input = document.getElementById('authPassword');
+    const errorMsg = document.getElementById('authErrorMsg');
+    const entered = input.value.trim().toUpperCase();
+    const correct = generateTodayPassword();
+
+    if (entered === correct) {
+        markDeviceVerified();
+        document.getElementById('authOverlay').classList.add('hidden');
+        initApp(); // 这里调用你的应用初始化函数
+    } else {
+        input.classList.add('error');
+        errorMsg.classList.add('show');
+        input.value = '';
+    }
+}
+
+// 页面加载时检查
+window.onload = function() {
+    if (isDeviceVerified()) {
+        document.getElementById('authOverlay').classList.add('hidden');
+        initApp();
+    } else {
+        document.getElementById('authPassword').focus();
+        document.getElementById('authPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyPassword();
+        });
+    }
+};
+```
+
+
+方法2：使用iframe嵌入
+--------------------------------------------------------------------------------
+如果不想复制代码，可以使用iframe嵌入原页面：
+```html
+<iframe src="原始验证页面URL" style="width:100%;height:100%;border:none;"></iframe>
+```
+
+
+方法3：模块化引用
+--------------------------------------------------------------------------------
+将验证功能封装为独立的JS模块：
+```javascript
+// auth.js
+const AuthSystem = {
+    init: function(onSuccess) {
+        this.onSuccess = onSuccess;
+        if (this.isVerified()) {
+            this.onSuccess();
+        } else {
+            this.showOverlay();
+        }
+    },
+    // ... 其他方法
+};
+```
+
+
+七、验证码日期对应表（2024-2026年）
+================================================================================
+
+2024年
+--------------------------
+1月 1日: 2002 → 07D2 → 07D2    1月 5日: 2126 → 084E → 084E
+1月10日: 3010 → 0BC2 → 0BC2    1月15日: 4440 → 1158 → 1158
+2月 1日: 4009 → 0FA9 → 0FA9    2月14日: 7076 → 1BA4 → 1BA4
+3月 1日: 6028 → 1784 → 1784    3月10日: 8130 → 1FC2 → 1FC2
+4月 1日: 8037 → 1F5D → 1F5D    4月 4日: 2128 → 0850 → 0850
+5月 1日: 10036 → 2734 → 2734   5月 5日: 10036+125→1016F→016F
+6月 1日: 12037 → 2F25 → 2F25   6月15日: 14440 → 3868 → 3868
+7月 1日: 14050 → 36FA → 36FA   7月 7日: 14050+343→143DB→43DB
+8月 1日: 16073 → 3F09 → 3F09   8月15日: 18560 → 4880 → 4880
+9月 1日: 18106 → 46BA → 46BA   9月 9日: 18106+729→18853→8853
+10月 1日: 20161 → 4ED1 → 4ED1  10月10日: 20161+1000→211A1→1A1A
+11月 1日: 22144 → 56B8 → 56B8  11月11日: 23142 → 5A66 → 5A66
+12月 1日: 24153 → 5E49 → 5E49  12月25日: 26178 → 6642 → 6642
+
+2025年
+--------------------------
+1月 1日: 2002 → 07D2 → 07D2    1月 1日: 同上
+2月 1日: 4009 → 0FA9 → 0FA9    2月14日: 7076 → 1BA4 → 1BA4
+3月 1日: 6028 → 1784 → 1784    3月15日: 5402 → 151A → 151A
+4月 1日: 8037 → 1F5D → 1F5D    4月 4日: 2128 → 0850 → 0850
+5月 1日: 10036 → 2734 → 2734   5月 5日: 10036+125=10161→27E1→27E1
+6月 1日: 12037 → 2F25 → 2F25   6月 1日: 同上
+7月 1日: 14050 → 36FA → 36FA   7月 1日: 同上
+8月 1日: 16073 → 3F09 → 3F09   8月 1日: 同上
+9月 1日: 18106 → 46BA → 46BA   9月 1日: 同上
+10月 1日: 20161 → 4ED1 → 4ED1  10月 1日: 同上
+11月 1日: 22144 → 56B8 → 56B8  11月 1日: 同上
+12月 1日: 24153 → 5E49 → 5E49  12月 1日: 同上
+
+2026年
+--------------------------
+1月 1日: 2002 → 07D2 → 07D2    1月 1日: 同上
+2月 1日: 4009 → 0FA9 → 0FA9    2月 1日: 同上
+3月 1日: 6028 → 1784 → 1784    3月 1日: 同上
+4月 1日: 8037 → 1F5D → 1F5D    4月 3日: 8037+27=8064→1F80→1F80
+4月 4日: 8037+64+2000=10101→2775→2775
+4月 5日: 8037+125+2000=10162→27D2→27D2
+5月 1日: 10036 → 2734 → 2734   5月 1日: 同上
+6月 1日: 12037 → 2F25 → 2F25   6月 1日: 同上
+7月 1日: 14050 → 36FA → 36FA   7月 1日: 同上
+8月 1日: 16073 → 3F09 → 3F09   8月 1日: 同上
+9月 1日: 18106 → 46BA → 46BA   9月 1日: 同上
+10月 1日: 20161 → 4ED1 → 4ED1  10月 1日: 同上
+11月 1日: 22144 → 56B8 → 56B8  11月 1日: 同上
+12月 1日: 24153 → 5E49 → 5E49  12月 1日: 同上
+
+
+八、注意事项
+================================================================================
+
+1. localStorage 在某些隐私模式下可能不可用，需要添加 try-catch 异常处理
+
+2. 验证码不区分大小写，系统会自动将输入转为大写比较
+
+3. 设备验证标记是持久化的，清除浏览器数据后会重新验证
+
+4. 验证码每日凌晨0点自动更新
+
+5. 此机制适用于轻度版权保护，不能防止技术破解
+
+6. 移动端适配：输入框在移动端需要调整字体大小和内边距
+
+
+九、响应式适配
+================================================================================
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .auth-container {
+        padding: 28px 24px;
+    }
+    .auth-title {
+        font-size: 20px;
+    }
+    .auth-input {
+        padding: 14px 16px;
+        font-size: 16px;
+        letter-spacing: 6px;
+    }
+    .auth-logo {
+        width: 64px;
+        height: 64px;
+    }
+    .auth-logo svg {
+        width: 32px;
+        height: 32px;
+    }
+}
