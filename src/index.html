@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中基导图</title>
+    <meta name="description" content="中基导图 - 中医基础理论学习工具">
+    <meta name="theme-color" content="#1a237e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="2.png" type="image/png">
+    <link rel="apple-touch-icon" href="2.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: calc(100% + 60px);
+            border: none;
+            position: absolute;
+            top: -60px;
+            left: 0;
+        }
+
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-overlay.hidden {
+            display: none !important;
+        }
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3, #9C27B0, #FF9800);
+        }
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .auth-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .auth-subtitle {
+            font-size: 14px;
+            color: #757575;
+            margin-bottom: 28px;
+        }
+        .auth-date-display {
+            margin-bottom: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+        .auth-input-group {
+            margin-bottom: 20px;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 18px;
+            letter-spacing: 8px;
+            text-align: center;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            background: #F5F5F5;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-family: inherit;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            background: #fff;
+        }
+        .auth-input.error {
+            border-color: #f44336;
+            background: #ffebee;
+            animation: shake 0.5s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .auth-hint {
+            font-size: 12px;
+            color: #9E9E9E;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            transition: all 0.2s;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        .auth-error-msg {
+            color: #f44336;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .auth-error-msg.show {
+            display: flex;
+        }
+
+        @media (max-width: 768px) {
+            .auth-container {
+                padding: 28px 24px;
+            }
+            .auth-title {
+                font-size: 20px;
+            }
+            .auth-input {
+                padding: 14px 16px;
+                font-size: 16px;
+                letter-spacing: 6px;
+            }
+            .auth-logo {
+                width: 64px;
+                height: 64px;
+            }
+        }
+
+        .contact-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .contact-modal.show {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .contact-modal-content {
+            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 24px;
+            padding: 40px 32px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.4s ease;
+            position: relative;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .contact-modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f44336, #ff6b6b, #f44336);
+            border-radius: 24px 24px 0 0;
+        }
+        .contact-modal-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.2);
+        }
+        .contact-modal-icon svg {
+            width: 36px;
+            height: 36px;
+            fill: #f44336;
+        }
+        .contact-modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .contact-modal-subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 24px;
+        }
+        .contact-info-list {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .contact-info-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px dashed #e0e0e0;
+        }
+        .contact-info-item:last-child {
+            border-bottom: none;
+        }
+        .contact-info-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .contact-info-label svg {
+            width: 20px;
+            height: 20px;
+            fill: #4CAF50;
+        }
+        .contact-info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-left: 8px;
+        }
+        .contact-copy-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+        .contact-copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        .contact-copy-btn:active {
+            transform: translateY(0);
+        }
+        .contact-copy-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: white;
+        }
+        .contact-copy-btn.copied {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+        }
+        .contact-modal-btn {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            padding: 14px 48px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        }
+        .contact-modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <iframe src="https://www.kdocs.cn/l/cdI4wTXKPyKc" id="mainIframe"></iframe>
+    </div>
+
+    <div class="auth-overlay hidden" id="authOverlay">
+        <div class="auth-container">
+            <div class="auth-logo">
+                <img src="2.png" alt="中基导图">
+            </div>
+            <h2 class="auth-title">中基导图</h2>
+            <p class="auth-subtitle">正版授权验证</p>
+
+            <div class="auth-date-display">
+                <strong>请输入4位验证码</strong>
+            </div>
+
+            <div class="auth-input-group">
+                <input type="text" class="auth-input" id="authPassword" placeholder="请输入4位验证码" maxlength="4" autocomplete="off">
+                <div class="auth-hint">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#9E9E9E"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <span>密码不区分大小写，同一设备只需验证一次</span>
+                </div>
+            </div>
+
+            <button class="auth-btn" id="authSubmitBtn" onclick="verifyPassword()">验证并进入</button>
+
+            <div class="auth-error-msg" id="authErrorMsg">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="#f44336"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span>验证码错误，请重试</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="contact-modal" id="contactModal">
+        <div class="contact-modal-content">
+            <div class="contact-modal-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="contact-modal-title">验证失败</div>
+            <div class="contact-modal-subtitle">请联系客服获取帮助</div>
+
+            <div class="contact-info-list">
+                <div class="contact-info-item">
+                    <div class="contact-info-label">
+                        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                        <span>微信公众号</span>
+                        <span class="contact-info-value" id="wechatOfficial">一介医生</span>
+                    </div>
+                    <button class="contact-copy-btn" onclick="copyToClipboard('wechatOfficial', this)">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <span>复制</span>
+                    </button>
+                </div>
+                <div class="contact-info-item">
+                    <div class="contact-info-label">
+                        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                        <span>微信号</span>
+                        <span class="contact-info-value" id="wechatId">yijiedoctor</span>
+                    </div>
+                    <button class="contact-copy-btn" onclick="copyToClipboard('wechatId', this)">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <span>复制</span>
+                    </button>
+                </div>
+            </div>
+
+            <button class="contact-modal-btn" onclick="closeContactModal()">我知道了</button>
+        </div>
+    </div>
+
+    <script>
+        // 生成今日密码 - 基于日期的动态密码算法
+        function generateTodayPassword() {
+            const now = new Date();
+            const month = now.getMonth() + 1;  // 1-12
+            const day = now.getDate();          // 1-31
+
+            // (月份³ + 日期³) + 2000
+            const num = Math.pow(month, 3) + Math.pow(day, 3) + 2000;
+
+            // 转为16进制（0-9, A-F）
+            const hex = num.toString(16).toUpperCase();
+
+            // 取后4位
+            const password = hex.slice(-4);
+
+            return password;
+        }
+
+        // 检查设备是否已验证
+        function isDeviceVerified() {
+            if (localStorage.getItem('tcm_auth_passed') === 'true') {
+                return true;
+            }
+            if (localStorage.getItem('jingui_auth_passed') === 'true') {
+                localStorage.setItem('tcm_auth_passed', 'true');
+                return true;
+            }
+            return false;
+        }
+
+        // 标记设备已验证
+        function markDeviceVerified() {
+            localStorage.setItem('tcm_auth_passed', 'true');
+            localStorage.setItem('jingui_auth_passed', 'true');
+        }
+
+        // 显示客服联系弹窗
+        function showContactModal() {
+            document.getElementById('contactModal').classList.add('show');
+        }
+
+        // 关闭客服联系弹窗
+        function closeContactModal() {
+            document.getElementById('contactModal').classList.remove('show');
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(elementId, btn) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalHTML = btn.innerHTML;
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>已复制</span>';
+
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                // 降级方案
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                const originalHTML = btn.innerHTML;
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>已复制</span>';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            });
+        }
+
+        // 验证密码
+        function verifyPassword() {
+            const input = document.getElementById('authPassword');
+            const errorMsg = document.getElementById('authErrorMsg');
+            const entered = input.value.trim().toUpperCase();
+            const correct = generateTodayPassword();
+
+            if (entered === correct) {
+                markDeviceVerified();
+                document.getElementById('authOverlay').classList.add('hidden');
+                initApp();
+            } else {
+                input.classList.add('error');
+                errorMsg.classList.add('show');
+                input.value = '';
+                setTimeout(() => {
+                    input.classList.remove('error');
+                }, 500);
+                setTimeout(() => {
+                    showContactModal();
+                }, 500);
+            }
+        }
+
+        // 初始化应用
+        function initApp() {
+            console.log('App initialized - main content would load here');
+        }
+
+        // 页面加载时检查验证状态
+        document.addEventListener('DOMContentLoaded', function() {
+            if (isDeviceVerified()) {
+                initApp();
+            } else {
+                document.getElementById('authOverlay').classList.remove('hidden');
+                document.getElementById('authPassword').focus();
+                document.getElementById('authPassword').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') verifyPassword();
+                });
+            }
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
