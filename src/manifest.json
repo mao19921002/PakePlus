@@ -1,7 +1,7 @@
 {
-  "name": "中诊导图",
-  "short_name": "中诊导图",
-  "description": "中诊导图 - 中医诊断学学习工具",
+  "name": "方剂学导图",
+  "short_name": "方剂学导图",
+  "description": "方剂学学习工具",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#1a237e",
@@ -32,7 +32,7 @@
     {
       "name": "进入应用",
       "short_name": "进入",
-      "description": "直接进入中诊导图",
+      "description": "直接进入方剂学导图",
       "url": "index.html",
       "icons": [{ "src": "2.png", "sizes": "96x96" }]
     }
