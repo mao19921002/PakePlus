@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = '伤寒论导图-v1';
+const CACHE_NAME = '中医导图-v1';
 const urlsToCache = [
   './',
   './index.html',
